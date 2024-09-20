@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor VR con Three.js y WebXR</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Función para añadir el botón de VR si está disponible
+        function addVRButton(renderer) {
+            // Crear el botón de VR manualmente
+            const button = document.createElement('button');
+            button.style.position = 'absolute';
+            button.style.bottom = '20px';
+            button.style.left = '50%';
+            button.style.transform = 'translateX(-50%)';
+            button.style.padding = '12px 24px';
+            button.style.fontSize = '16px';
+            button.textContent = 'Entrar en VR';
+
+            button.addEventListener('click', () => {
+                if (navigator.xr) {
+                    renderer.xr.enabled = true;
+                    navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                        if (supported) {
+                            navigator.xr.requestSession('immersive-vr')
+                                .then((session) => {
+                                    session.requestReferenceSpace('local') // Usa 'local' en lugar de 'local-floor'
+                                        .then((refSpace) => {
+                                            renderer.xr.setReferenceSpace(refSpace);
+                                            renderer.xr.setSession(session);
+                                        })
+                                        .catch((err) => {
+                                            console.error('Error al establecer el espacio de referencia:', err);
+                                            alert('No se pudo establecer el espacio de referencia.');
+                                        });
+                                })
+                                .catch((err) => {
+                                    console.error('Error al iniciar la sesión VR:', err);
+                                    alert('Error al iniciar la sesión VR.');
+                                });
+                        } else {
+                            alert('El dispositivo no soporta "immersive-vr".');
+                        }
+                    });
+                } else {
+                    alert('WebXR no está disponible en este dispositivo.');
+                }
+            });
+
+            document.body.appendChild(button);
+        }
+
+        let scene, camera, renderer;
+
+        // Inicializar la escena
+        function init() {
+            // Crear escena
+            scene = new THREE.Scene();
+
+            // Crear cámara con una visión estéreo para VR
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+
+            // Configurar el renderizador
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.xr.enabled = true; // Habilitar WebXR para VR
+            document.body.appendChild(renderer.domElement);
+
+            // Crear un objeto simple (esfera)
+            const geometry = new THREE.SphereGeometry(1, 32, 32);
+            const material = new THREE.MeshBasicMaterial({ color: 0x0077ff });
+            const sphere = new THREE.Mesh(geometry, material);
+            scene.add(sphere);
+
+            // Añadir luces
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(0, 1, 1).normalize();
+            scene.add(light);
+
+            // Añadir botón para entrar en VR
+            addVRButton(renderer);
+
+            animate();
+        }
+
+        // Función para animar la escena
+        function animate() {
+            renderer.setAnimationLoop(() => {
+                renderer.render(scene, camera);
+            });
+        }
+
+        // Ajustar el tamaño del renderizado si cambia el tamaño de la ventana
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        init();
+    </script>
+</body>
+</html>
